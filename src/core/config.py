@@ -149,10 +149,16 @@ def get_red_model() -> str:
             os.environ.get("GEMINI_MODEL", DEFAULT_GEMINI_MODEL).strip()
             or DEFAULT_GEMINI_MODEL
         )
-    return (
+    model = (
         os.environ.get("OPENAI_MODEL", DEFAULT_OPENAI_MODEL).strip()
         or DEFAULT_OPENAI_MODEL
     )
+    # If using OpenRouter fallback for OpenAI client
+    openai_key = get_openai_api_key()
+    if (not openai_key or openai_key.startswith("sk-...")) and get_openrouter_api_key():
+        if model == "gpt-4o-mini":
+            return "openai/gpt-4o-mini"
+    return model
 
 
 def get_red_model_default() -> str:
@@ -170,7 +176,15 @@ def get_openai_api_key() -> str:
 
 
 def red_openai_client_kwargs() -> dict:
-    return {"api_key": get_openai_api_key() or None}
+    key = get_openai_api_key()
+    if not key or key.startswith("sk-..."):
+        or_key = get_openrouter_api_key()
+        if or_key:
+            return {
+                "api_key": or_key,
+                "base_url": os.environ.get("OPENROUTER_BASE_URL", OPENROUTER_BASE_URL).strip() or OPENROUTER_BASE_URL,
+            }
+    return {"api_key": key or None}
 
 
 def red_provider_label(tier: str = "advance") -> str:
